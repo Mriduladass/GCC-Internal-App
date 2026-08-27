@@ -4,12 +4,24 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 const DEVICE_WIDTH = 430
 const DEVICE_HEIGHT = 932
 const BEZEL = 14
+const MOBILE_BREAKPOINT = 500 // px — below this, treat as a real phone
 
 export default function PhoneFrame({ children }: { children: ReactNode }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+  )
 
   useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile) return // no scaling math needed in mobile mode
     const el = outerRef.current
     if (!el) return
 
@@ -27,8 +39,14 @@ export default function PhoneFrame({ children }: { children: ReactNode }) {
     const observer = new ResizeObserver(fit)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [isMobile])
 
+  // Real phone: full-screen, no mockup chrome at all
+  if (isMobile) {
+    return <div className="h-screen w-screen overflow-y-auto bg-white">{children}</div>
+  }
+
+  // Desktop: scaled mockup frame, same as before
   return (
     <div
       ref={outerRef}
